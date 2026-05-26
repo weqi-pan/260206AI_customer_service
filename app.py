@@ -2,7 +2,12 @@ import time
 
 import streamlit as st
 from agent.react_agent import ReactAgent
+from db.init_db import initialize_database
+from db.repositories import get_recent_messages, save_message
+from utils.config_handler import agent_conf
 from utils.logger_handler import logger
+
+initialize_database()
 
 # 标题
 st.title("扫地机器人客服")
@@ -17,8 +22,13 @@ if "agent" not in st.session_state:
         st.error(str(e))
         st.stop()
 # 历史会话记录保存
+user_id = str(agent_conf.get("default_user_id", "1001"))
+session_id = str(agent_conf.get("conversation_session_id", f"{user_id}-default"))
+history_limit = int(agent_conf.get("conversation_history_limit", 20))
+st.session_state.setdefault("session_id", session_id)
+
 if "message" not in st.session_state:
-    st.session_state["message"] =[]
+    st.session_state["message"] = get_recent_messages(st.session_state["session_id"], history_limit)
 
 for message in st.session_state["message"]:
     st.chat_message(message["role"]).write(message["content"])
@@ -30,6 +40,7 @@ if prompt:
     st.chat_message("user").write(prompt)
     history = st.session_state["message"].copy()
     st.session_state["message"].append({"role": "user", "content": prompt})
+    save_message(st.session_state["session_id"], user_id, "user", prompt)
     response_message = []
     with st.spinner("智能客服处理中..."):
         def capture(generator, chunk_list):
@@ -51,4 +62,5 @@ if prompt:
         if not assistant_content:
             assistant_content = "暂时没有生成有效回复，请稍后重试。"
         st.session_state["message"].append({"role": "assistant", "content": assistant_content})
+        save_message(st.session_state["session_id"], user_id, "assistant", assistant_content)
         st.rerun()

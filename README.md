@@ -61,6 +61,12 @@ pip install -r requirements.txt
 │   ├── 维护保养.txt
 │   └── 选购指南.txt
 │
+├── db/                            # SQLite 本地数据层
+│   ├── connection.py              # SQLite 连接管理
+│   ├── init_db.py                 # 建表与样例数据导入
+│   ├── repositories.py            # 用户、使用记录、会话历史查询
+│   └── schema.sql                 # SQLite 表结构
+│
 ├── model/factory.py                # 模型工厂（聊天模型、嵌入模型）
 ├── prompts/                       # 提示词模板目录
 │   ├── main_prompt.txt            # 主系统提示词
@@ -184,16 +190,16 @@ pip install -r requirements.txt
 | 工具名称 | 功能描述 | 参数 | 返回值 | 调用模块 |
 |---------|---------|------|--------|----------|
 | `rag_summarize` | 向量库检索+总结 | query（检索词） | 参考资料总结 | `rag/rag_service.py` |
-| `get_weather` | 获取城市天气 | city（城市名） | 天气信息字符串 | 默认演示Provider |
-| `get_user_location` | 获取用户城市 | 无 | 配置中的默认城市 | 默认演示Provider |
-| `get_user_id` | 获取用户ID | 无 | 配置中的默认用户ID | 默认演示Provider |
-| `get_current_month` | 获取当前月份 | 无 | 当前月份或演示月份 | 默认演示Provider |
-| `fetch_external_data` | 获取使用记录 | user_id, month | 使用记录数据 | `utils/generate_external_data.py` |
+| `get_weather` | 获取城市天气 | city（城市名） | 天气信息字符串 | Provider |
+| `get_user_location` | 获取用户城市 | 无 | SQLite 用户城市或配置默认城市 | Provider |
+| `get_user_id` | 获取用户ID | 无 | 配置中的默认用户ID | Provider |
+| `get_current_month` | 获取当前月份 | 无 | 当前月份或演示月份 | Provider |
+| `fetch_external_data` | 获取使用记录 | user_id, month | 使用记录数据 | `db/repositories.py` |
 | `fill_context_for_report` | 触发报告上下文 | 无 | 确认消息 | 设置 context["report"]=True |
 
 **工具联动**：
 - `rag_summarize` → `RagSummarizeService` → `VectorStoreService` → Chroma 向量库
-- `fetch_external_data` → `generate_external_data()` → `external_data` 字典
+- `fetch_external_data` → `db.repositories.get_usage_record()` → SQLite 使用记录
 - `fill_context_for_report` → 触发中间件设置 `context["report"]=True` → 动态提示词切换
 
 ---
@@ -293,7 +299,7 @@ Chroma.add_documents()
 |------|------|----------|
 | `config_handler.py` | 加载 YAML 配置文件 | 全局配置初始化 |
 | `file_handler.py` | PDF/TXT 加载、MD5 计算 | `rag/vector_store.py` |
-| `generate_external_data.py` | 从 CSV 生成外部数据结构 | `agent_tools.fetch_external_data` |
+| `generate_external_data.py` | 兼容保留的 CSV 解析工具 | 样例数据处理 |
 | `logger_handler.py` | 创建日志记录器 | 全局日志记录 |
 | `path_tool.py` | 项目根目录、绝对路径转换 | 所有文件操作 |
 | `prompt_loader.py` | 加载提示词文件 | `ReactAgent`、`RagSummarizeService` |
@@ -370,9 +376,9 @@ Chroma 向量库检索
     ↓
 Agent 思考：需要获取用户ID和月份
     ↓
-工具调用: get_user_id() → 返回 "1005"
+工具调用: get_user_id() → 返回 "1001"
     ↓
-工具调用: get_current_month() → 返回 "2025-06"
+工具调用: get_current_month() → 返回 "2026-05"
     ↓
 工具调用: fill_context_for_report()
     ↓
@@ -380,9 +386,9 @@ Agent 思考：需要获取用户ID和月份
     ↓
 [中间件] report_prompt_switch: 切换到 report_prompt.txt
     ↓
-工具调用: fetch_external_data("1005", "2025-06")
+工具调用: fetch_external_data("1001", "2026-05")
     ↓
-utils/generate_external_data.py: 从 external_data 获取记录
+db/repositories.py: 从 SQLite 获取记录
     ↓
 Agent 使用新的提示词和外部数据生成报告
     ↓
@@ -422,10 +428,13 @@ report_prompt_path: prompts/report_prompt.txt
 ### `config/agent.yml` - Agent 配置
 ```yaml
 external_data_path: data/external/records.csv
-external_provider: demo
+external_provider: sqlite
 default_user_id: "1001"
 default_city: 上海
 demo_month: "2026-05"
+storage:
+  provider: sqlite
+  sqlite_path: data/app.db
 ```
 
 ---
@@ -466,7 +475,9 @@ streamlit run app.py
 
 ### 外部服务 Provider
 
-当前默认使用 `demo` Provider，用户ID、城市、演示月份和天气数据来自 `config/agent.yml`，因此演示结果是确定性的。后续接入真实用户系统、定位或天气服务时，可在 `agent/tools/providers.py` 中新增 Provider，并通过 `external_provider` 配置切换。
+当前默认使用 `sqlite` Provider，用户ID、城市、演示月份和天气数据来自 `config/agent.yml` 与 SQLite 样例数据，因此演示结果是确定性的。后续接入真实用户系统、定位或天气服务时，可在 `agent/tools/providers.py` 中新增 Provider，并通过 `external_provider` 配置切换。
+
+当前推荐配置为 `external_provider: sqlite`，应用启动时会自动创建 `data/app.db`，从 `data/external/records.csv` 导入样例使用记录，并将 Streamlit 对话写入 `conversation_history` 表。`data/app.db` 是本地运行产物，不提交到仓库。
 
 ### 添加新工具
 

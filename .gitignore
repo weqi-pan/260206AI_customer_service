@@ -26,6 +26,8 @@ logs/
 md5.text
 data/external/*
 !data/external/records.csv
+data/*.db
+data/*.db-*
 
 # Vector databases and generated indexes
 chroma_db/

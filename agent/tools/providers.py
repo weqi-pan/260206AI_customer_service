@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from db.init_db import initialize_database
+from db.repositories import get_user
 from utils.config_handler import agent_conf
 
 
@@ -35,8 +37,25 @@ class DemoExternalProvider:
         )
 
 
+class SQLiteExternalProvider(DemoExternalProvider):
+    def __init__(self):
+        super().__init__()
+        initialize_database()
+
+    def get_user_id(self) -> str:
+        return self.default_user_id
+
+    def get_user_location(self) -> str:
+        user = get_user(self.default_user_id)
+        if user and user.get("city"):
+            return user["city"]
+        return super().get_user_location()
+
+
 def get_external_provider():
     provider_type = agent_conf.get("external_provider", "demo")
-    if provider_type != "demo":
-        raise ValueError(f"暂不支持的外部服务 provider：{provider_type}")
-    return DemoExternalProvider()
+    if provider_type == "demo":
+        return DemoExternalProvider()
+    if provider_type == "sqlite":
+        return SQLiteExternalProvider()
+    raise ValueError(f"暂不支持的外部服务 provider：{provider_type}")

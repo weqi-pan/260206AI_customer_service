@@ -1,9 +1,10 @@
 from langchain_core.tools import tool
 
 from rag.rag_service import RagSummarizeService
-from utils.generate_external_data import generate_external_data, external_data
 from utils.logger_handler import logger
 from agent.tools.providers import get_external_provider
+from db.init_db import initialize_database
+from db.repositories import get_usage_record
 
 _rag_service = None
 provider = get_external_provider()
@@ -37,8 +38,8 @@ def get_current_month() -> str:
 
 @tool(description="从外部系统中获取用户在指定月份的使用记录，以纯字符串格式返回，若未检索到则返回明确提示")
 def fetch_external_data(user_id: str, month: str) -> str:
-    generate_external_data()
-    data = external_data.get(user_id, {}).get(month, {})
+    initialize_database()
+    data = get_usage_record(user_id, month)
     if not data:
         logger.warning(f"[fetch_external_data]未找到用户ID为{user_id}的指定月份数据{month}")
         return f"未找到用户ID为{user_id}在{month}的使用记录，请确认用户ID或月份是否正确。"
