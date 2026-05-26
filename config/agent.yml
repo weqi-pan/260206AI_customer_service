@@ -1,1 +1,12 @@
 external_data_path: data/external/records.csv
+external_provider: demo
+default_user_id: "1001"
+default_city: 上海
+demo_month: "2026-05"
+demo_weather:
+  condition: 晴天
+  temperature: 26摄氏度
+  humidity: 78%
+  wind: 南风2级
+  aqi: "21"
+  rain_probability: 低

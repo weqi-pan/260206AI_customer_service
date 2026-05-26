@@ -43,6 +43,7 @@ pip install -r requirements.txt
 ├── agent/                          # Agent 核心模块
 │   ├── tools/                      # 工具集合
 │   │   ├── agent_tools.py         # 7个工具函数定义
+│   │   ├── providers.py           # 外部服务Provider（默认演示实现）
 │   │   └── middleware.py          # 中间件（监控、日志、提示词切换）
 │   └── react_agent.py             # ReAct Agent 主类
 │
@@ -183,10 +184,10 @@ pip install -r requirements.txt
 | 工具名称 | 功能描述 | 参数 | 返回值 | 调用模块 |
 |---------|---------|------|--------|----------|
 | `rag_summarize` | 向量库检索+总结 | query（检索词） | 参考资料总结 | `rag/rag_service.py` |
-| `get_weather` | 获取城市天气 | city（城市名） | 天气信息字符串 | 模拟数据 |
-| `get_user_location` | 获取用户城市 | 无 | 随机城市 | 模拟数据 |
-| `get_user_id` | 获取用户ID | 无 | 随机用户ID | 模拟数据 |
-| `get_current_month` | 获取当前月份 | 无 | 随机月份 | 模拟数据 |
+| `get_weather` | 获取城市天气 | city（城市名） | 天气信息字符串 | 默认演示Provider |
+| `get_user_location` | 获取用户城市 | 无 | 配置中的默认城市 | 默认演示Provider |
+| `get_user_id` | 获取用户ID | 无 | 配置中的默认用户ID | 默认演示Provider |
+| `get_current_month` | 获取当前月份 | 无 | 当前月份或演示月份 | 默认演示Provider |
 | `fetch_external_data` | 获取使用记录 | user_id, month | 使用记录数据 | `utils/generate_external_data.py` |
 | `fill_context_for_report` | 触发报告上下文 | 无 | 确认消息 | 设置 context["report"]=True |
 
@@ -396,8 +397,10 @@ Agent 使用新的提示词和外部数据生成报告
 ```yaml
 chat_model_name: qwen3-max
 embedding_model_name: text-embedding-v4
-api_key: sk-xxx
+api_key: ${DASHSCOPE_API_KEY}
 ```
+
+`api_key` 支持环境变量占位符。不要把真实 API Key 直接提交到仓库。
 
 ### `config/chroma.yml` - 向量数据库配置
 ```yaml
@@ -419,6 +422,10 @@ report_prompt_path: prompts/report_prompt.txt
 ### `config/agent.yml` - Agent 配置
 ```yaml
 external_data_path: data/external/records.csv
+external_provider: demo
+default_user_id: "1001"
+default_city: 上海
+demo_month: "2026-05"
 ```
 
 ---
@@ -431,13 +438,11 @@ external_data_path: data/external/records.csv
 # 安装依赖
 pip install -r requirements.txt
 
-# 配置 API 密钥（在 config/rag.yml 中设置）
-api_key: sk-你的API密钥
-
-# 或设置环境变量
-export OPENAI_API_KEY=sk-你的API密钥
+# 配置 API 密钥
 export DASHSCOPE_API_KEY=sk-你的API密钥
 ```
+
+首次启动时，如果本地没有 `chroma_db/` 或 `md5.text`，系统会自动读取 `data/` 下的知识库文件并构建向量库。`chroma_db/` 是本地运行产物，不提交到仓库。
 
 ### 2. 启动应用
 
@@ -459,6 +464,10 @@ streamlit run app.py
 
 ## 开发说明
 
+### 外部服务 Provider
+
+当前默认使用 `demo` Provider，用户ID、城市、演示月份和天气数据来自 `config/agent.yml`，因此演示结果是确定性的。后续接入真实用户系统、定位或天气服务时，可在 `agent/tools/providers.py` 中新增 Provider，并通过 `external_provider` 配置切换。
+
 ### 添加新工具
 
 1. 在 `agent/tools/agent_tools.py` 中使用 `@tool` 装饰器定义工具
@@ -469,7 +478,7 @@ streamlit run app.py
 
 1. 将文件放入 `data/` 目录
 2. 确保 `config/chroma.yml` 的 `allow_knowledge_file_types` 包含文件扩展名
-3. 重启应用，系统自动加载
+3. 重启应用，系统会在检测到本地向量库缺失时自动加载
 
 ### 日志查看
 

@@ -1,3 +1,4 @@
+import csv
 import os
 
 from utils.config_handler import agent_conf
@@ -12,15 +13,18 @@ def generate_external_data():
         if not os.path.exists(external_data_path):
             raise FileNotFoundError(f"外部数据文件不存在:{external_data_path}")
         with open(external_data_path, "r", encoding="utf-8") as f:
-            for line in f.readlines()[1:]:
-                arr: list[str] = line.strip().split(",")
+            reader = csv.DictReader(f)
+            required_fields = {"用户ID", "特征", "清洁效率", "耗材", "对比", "时间"}
+            if not reader.fieldnames or not required_fields.issubset(set(reader.fieldnames)):
+                raise ValueError(f"外部数据CSV表头不完整，需要字段：{', '.join(sorted(required_fields))}")
 
-                user_id: str = arr[0].replace('"', "")
-                feature: str = arr[1].replace('"', "")
-                efficiency: str = arr[2].replace('"', "")
-                consumables: str = arr[3].replace('"', "")
-                comparison: str = arr[4].replace('"', "")
-                time: str = arr[5].replace('"', "")
+            for row in reader:
+                user_id: str = row["用户ID"].strip()
+                feature: str = row["特征"].strip()
+                efficiency: str = row["清洁效率"].strip()
+                consumables: str = row["耗材"].strip()
+                comparison: str = row["对比"].strip()
+                time: str = row["时间"].strip()
 
                 if user_id not in external_data:
                     external_data[user_id] = {}

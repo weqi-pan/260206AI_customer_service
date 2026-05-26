@@ -1,6 +1,6 @@
 import os
 from langchain_chroma import Chroma
-from model.factory import embedding_model
+from model.factory import get_embedding_model
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
@@ -11,10 +11,13 @@ from utils.logger_handler import logger
 
 class VectorStoreService:
     def __init__(self):
+        self.persist_directory = get_abs_path(chroma_conf["persist_directory"])
+        self.md5_store_path = get_abs_path(chroma_conf["md5_hex_store"])
+        self.data_path = get_abs_path(chroma_conf["data_path"])
         self.vector_store = Chroma(
             collection_name=chroma_conf["collection_name"],
-            embedding_function=embedding_model,
-            persist_directory=chroma_conf["persist_directory"]
+            embedding_function=get_embedding_model(),
+            persist_directory=self.persist_directory
         )
         self.spliter = RecursiveCharacterTextSplitter(
             chunk_size=chroma_conf["chunk_size"],
@@ -26,12 +29,30 @@ class VectorStoreService:
     def get_retriever(self):
         return self.vector_store.as_retriever(search_kwargs={"k": chroma_conf["k"]})
 
+    def is_vector_store_empty(self) -> bool:
+        try:
+            return self.vector_store._collection.count() == 0
+        except Exception as e:
+            logger.warning(f"[加载知识库]检查向量库数量失败，将尝试重新加载：{str(e)}")
+            return True
+
+    def ensure_loaded(self):
+        if (
+            not os.path.exists(self.persist_directory)
+            or not os.path.exists(self.md5_store_path)
+            or self.is_vector_store_empty()
+        ):
+            logger.info("[加载知识库]检测到本地向量库缺失、为空或MD5记录缺失，开始初始化知识库")
+            self.load_documents()
+
     def load_documents(self):
         def check_md5_hex(md5_for_check: str):
-            if not os.path.exists(get_abs_path(chroma_conf["md5_hex_store"])):
-                open(get_abs_path(chroma_conf["md5_hex_store"]), "w", encoding="utf-8").close()
+            if not md5_for_check:
                 return False
-            with open(get_abs_path(chroma_conf["md5_hex_store"]), "r", encoding="utf-8") as f:
+            if not os.path.exists(self.md5_store_path):
+                open(self.md5_store_path, "w", encoding="utf-8").close()
+                return False
+            with open(self.md5_store_path, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line == md5_for_check:
@@ -39,7 +60,7 @@ class VectorStoreService:
                 return False
 
         def save_md5_hex(md5_for_save: str):
-            with open(get_abs_path(chroma_conf["md5_hex_store"]), "a", encoding="utf-8") as f:
+            with open(self.md5_store_path, "a", encoding="utf-8") as f:
                 f.write(md5_for_save + "\n")
 
         def get_file_documents(read_path: str):
@@ -50,7 +71,7 @@ class VectorStoreService:
             return []
 
         allowed_files_path: list[str] = listdir_with_allowed_type(
-            get_abs_path(chroma_conf["data_path"]),
+            self.data_path,
             tuple(chroma_conf["allow_knowledge_file_types"])
         )
         for file_path in allowed_files_path:

@@ -24,7 +24,8 @@ env/
 logs/
 *.log
 md5.text
-data/external/
+data/external/*
+!data/external/records.csv
 
 # Vector databases and generated indexes
 chroma_db/
