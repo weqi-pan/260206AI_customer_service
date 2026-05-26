@@ -196,10 +196,14 @@ pip install -r requirements.txt
 | `get_current_month` | 获取当前月份 | 无 | 当前月份或演示月份 | Provider |
 | `fetch_external_data` | 获取使用记录 | user_id, month | 使用记录数据 | `db/repositories.py` |
 | `fill_context_for_report` | 触发报告上下文 | 无 | 确认消息 | 设置 context["report"]=True |
+| `search_devices` | 搜索设备 | keyword | 匹配设备列表 | `db/repositories.py` |
+| `query_device_info` | 查询设备详情 | model_id | 设备参数、价格、功能 | `db/repositories.py` |
+| `query_inventory` | 查询设备库存 | model_id | 各仓库库存和总库存 | `db/repositories.py` |
 
 **工具联动**：
 - `rag_summarize` → `RagSummarizeService` → `VectorStoreService` → Chroma 向量库
 - `fetch_external_data` → `db.repositories.get_usage_record()` → SQLite 使用记录
+- `search_devices/query_device_info/query_inventory` → SQLite 设备与库存数据
 - `fill_context_for_report` → 触发中间件设置 `context["report"]=True` → 动态提示词切换
 
 ---
@@ -468,6 +472,9 @@ streamlit run app.py
 | 常规咨询 | 扫地机器人会漏扫吗？大户型适合什么扫地机器人？ |
 | 天气相关 | 我这里天气潮湿能用扫地机器人吗？ |
 | 报告生成 | 给我生成我的使用报告、查一下我的机器人使用记录 |
+| 设备搜索 | 有哪些扫拖一体机器人？宠物家庭适合哪款？ |
+| 设备详情 | R1-Pro这个型号怎么样？RT2-Max有什么功能？ |
+| 库存查询 | R1-Pro还有库存吗？RT2-Max哪个仓库有货？ |
 
 ---
 

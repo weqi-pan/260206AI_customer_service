@@ -2,7 +2,18 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage
 from model.factory import get_chat_model
 from utils.prompt_loader import load_system_prompt
-from agent.tools.agent_tools import rag_summarize, get_weather, get_user_location, get_user_id, get_current_month, fetch_external_data, fill_context_for_report
+from agent.tools.agent_tools import (
+    fetch_external_data,
+    fill_context_for_report,
+    get_current_month,
+    get_user_id,
+    get_user_location,
+    get_weather,
+    query_device_info,
+    query_inventory,
+    rag_summarize,
+    search_devices,
+)
 from agent.tools.middleware import monitor_tool, log_before_model, report_prompt_switch
 
 class ReactAgent:
@@ -10,7 +21,18 @@ class ReactAgent:
         self.agent = create_agent(
             model = get_chat_model(),
             system_prompt = load_system_prompt(),
-            tools = [rag_summarize, get_weather, get_user_location, get_user_id, get_current_month, fetch_external_data, fill_context_for_report],
+            tools = [
+                rag_summarize,
+                get_weather,
+                get_user_location,
+                get_user_id,
+                get_current_month,
+                fetch_external_data,
+                fill_context_for_report,
+                search_devices,
+                query_device_info,
+                query_inventory,
+            ],
             middleware = [monitor_tool, log_before_model, report_prompt_switch],
         )
 

@@ -32,6 +32,54 @@ def get_usage_record(user_id: str, month: str) -> dict | None:
     }
 
 
+def search_devices_by_keyword(keyword: str, limit: int = 3) -> list[dict]:
+    pattern = f"%{keyword.strip()}%"
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT model_id, model_name, category, specs, description, price, features
+            FROM devices
+            WHERE model_id LIKE ?
+               OR model_name LIKE ?
+               OR category LIKE ?
+               OR specs LIKE ?
+               OR description LIKE ?
+               OR features LIKE ?
+            ORDER BY price ASC
+            LIMIT ?
+            """,
+            (pattern, pattern, pattern, pattern, pattern, pattern, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_device(model_id: str) -> dict | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT model_id, model_name, category, specs, description, price, features
+            FROM devices
+            WHERE model_id = ?
+            """,
+            (model_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_inventory(model_id: str) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT model_id, warehouse, stock, updated_at
+            FROM inventory
+            WHERE model_id = ?
+            ORDER BY warehouse ASC
+            """,
+            (model_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def save_message(session_id: str, user_id: str, role: str, content: str) -> None:
     with get_connection() as conn:
         conn.execute(
