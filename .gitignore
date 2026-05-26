@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE/editor
+.idea/
+.vscode/
+
+# Runtime output
+logs/
+*.log
+md5.text
+data/external/
+
+# Vector databases and generated indexes
+chroma_db/
+**/chroma_db/
+
+# Local notebooks and experiments
+test/
+*_test.py
+*.ipynb
+
+# OS files
+.DS_Store
+Thumbs.db
